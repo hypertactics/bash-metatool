@@ -1,0 +1,81 @@
+#!/usr/bin/env rvm-shell
+
+if [[ "${METATOOL_DEBUG}" == 1 ]]; then
+    set -x
+fi
+
+export METATOOL=$(basename $0)
+export METATOOL_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && cd .. && pwd )"
+export METATOOL_CONFIG_DIRECTORY="${METATOOL_PATH}/etc"
+export CHEF_PATH="${METATOOL_PATH}/lib/chef"
+
+# core lib/modules
+IFS=" "; while read core_file; do
+    source $core_file
+done <<<$( ls $METATOOL_PATH/lib/metatool/modules/core/*.lib; 
+           ls $METATOOL_PATH/lib/metatool/workflows/core/*.sh;
+           ls $METATOOL_PATH/lib/metatool/workflows/test/*.sh)
+
+# include core libs
+metatool.lib
+# include the other core libs
+metatool_include_libs
+
+metatool_pid=$$
+
+##trap killtree metatool ERR SIGTERM SIGINT EXIT
+ 
+# TODO: would be better to do on demand extension loading - make it so
+# load extensions when they exist
+extension_exist=$([ "$(find $METATOOL_PATH/lib/metatool/modules/extensions -name '*.lib')" ] && echo "true" || echo "false")
+if [ "${extension_exist}" == "true" ]; then
+    IFS=" "; while read extenstion; do
+        source $extenstion;
+    done <<<$(ls $METATOOL_PATH/lib/metatool/modules/extensions/*.lib)
+fi
+
+# make sure the user is not running as root
+# the idea is that the user is using their personal or company credentials
+metatool_user_not_root
+
+# this should all be pulled back to metatool.lib
+# and it doesn't conform to DRY... I'm sure it can be cleaned up quite a bit
+case "${METATOOL}" in
+    metatool)
+        if [ -z $1 ]; then
+            echo -e "${redf}Usage: ${reset}metatool [workflow]"
+            metatool_show_installed_workflows
+            exit 2
+        fi
+
+        # assuming standalone metatool
+        if [[ -f "${METATOOL_PATH}/lib/metatool/workflows/core/${1}.sh" ]]; then
+            workflow_$1 $@
+        else
+            echo "Unknown action!"
+        fi
+    ;;
+    *)
+        if [ -z $1 ]; then
+            echo -e "${redf}Usage: ${reset}$METATOOL [workflow]"
+            metatool_show_tool_workflows "${METATOOL}"
+            exit 2
+        fi
+
+        # assuming tool bound workflow
+        if [[ -f "${METATOOL_PATH}/lib/metatool/workflows/${METATOOL}/WORKFLOW.yml" ]]; then 
+            if [[ -f "${METATOOL_PATH}/lib/metatool/workflows/${METATOOL}/${1}.sh" ]]; then
+                source "${METATOOL_PATH}/lib/metatool/workflows/${METATOOL}/${1}.sh"
+                workflow_$1 $@
+            fi
+        else
+            echo "No workflows defined in the set of tool bound workflows"
+            exit 2
+        fi
+    ;;
+esac
+
+# always keep dialog tmp data clear
+dialog_data_clear
+
+exit 0

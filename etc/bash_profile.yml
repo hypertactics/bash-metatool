@@ -1,0 +1,18 @@
+---
+aliases:
+  airport:
+    command: /System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport
+    platforms: [mac_os_x]
+variables:
+  PATH:
+    - packer:
+      path: $HOME/bin/packer_0.7.1_darwin_amd64
+      platforms: [mac_os_x]
+    - gnu_bin:
+      path: /usr/local/opt/coreutils/libexec/gnubin
+      platforms: [mac_os_x]
+    - ovftool_os_x:
+      path: $PATH:/Applications/VMware\ OVF\ Tool"
+      platforms: [mac_os_x]
+adhocs:
+  - "[[ -s \"$HOME/.rvm/scripts/rvm\" ]] && source \"$HOME/.rvm/scripts/rvm\" # Load RVM into a shell session *as a function*"

@@ -1,0 +1,2 @@
+PATH=$PATH:{{METATOOL_PATH}}            # metatool:job:lock
+*/{{minutes}} * * * * metatool lock     # metatool:job:lock

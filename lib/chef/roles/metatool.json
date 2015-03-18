@@ -1,0 +1,53 @@
+{
+  "name": "metatool",
+  "description": "shell utility",
+  "json_class": "Chef::Role",
+  "default_attributes": {
+    "metatool": {
+      "packages": { 
+        "dialog": {
+          "action": "install"
+        },
+        "vcsh": {
+          "action": "install"
+        },
+        "awscli": {
+          "action": "install"
+        },
+        "jq": {
+          "action": "install"
+        },
+        "aria2": {
+          "action": "install"
+        },
+        "resty": {
+          "action": "install"
+        },
+        "html-xml-utils": {
+          "action": "install"
+        },
+        "pyenv-virtualenv": {
+          "action": "install"
+        },
+        "bash": {
+          "action": "install"
+        },
+        "phantomjs": {
+          "action": "install"
+        },
+        "ansible": {
+          "action": "install"
+        }
+      }
+    }
+  },
+  "override_attributes": {
+  },
+  "chef_type": "role",
+  "run_list": [
+    "recipe[metatool::packages]",
+    "recipe[metatool::permissions]"
+  ],
+  "env_run_lists": {
+  }
+}

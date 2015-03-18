@@ -1,0 +1,191 @@
+dialog.lib() {
+    # http://invisible-island.net/dialog/
+ 
+    export DIALOG=${DIALOG=dialog}
+    export DIALOG_DATA=$METATOOL_PATH/tmp/.dialog.tmp
+    export DIALOG_CURRENT_TIME=$(date '+%H %M %S')
+    export DIALOG_WARNING_RC=$METATOOL_PATH/etc/dialog/warningrc
+    export DIALOG_CRITICAL_RC=$METATOOL_PATH/etc/dialog/criticalrc
+    export DIALOG_OKAY_RC=$METATOOL_PATH/etc/dialog/okayrc
+ 
+    if [ ! -f $DIALOG_DATA ]; then
+        touch $DIALOG_DATA
+    fi
+
+    dialog_critical_rc=$METATOOL_PATH/etc/dialog/criticalrc
+
+    if [ -f $HOME/.dialogrc ]; then
+        dialog_standard_rc=$HOME/.dialogrc
+        export DIALOGRC=$dialog_standard_rc
+    else
+        dialog_standard_rc=$METATOOL_PATH/etc/dialog/standardrc
+        export DIALOGRC=$dialog_standard_rc
+    fi
+}
+
+# dialog functions to shorten up the programming
+# when output is needed all will output into $DIALOG_DATA and
+# can be read by cat'ing out the content of the file
+# for sensitive data use DIALOG_DATA_clear when dong with the data
+# otherwise metatool will clear it out after every run
+# chef currently maintains the permissions on this file soley to the user 
+# because I like yaml better chef might get replaced with ansible
+
+# public
+
+dialog_msg() {
+    local message="${1}"
+    local width=${2:-0}
+    local height=${3:-0}
+
+    $DIALOG --clear \
+        --msgbox "${message}" $height $width
+}
+
+dialog_info() {
+    local message="${1}"
+    local width=${2:-0}
+    local height=${3:-0}
+
+    $DIALOG --infobox "${message}" $height $width
+}
+
+dialog_passphrase() {
+    local title="${1}"
+    local message="${2}"
+    local width=${3:-0}
+    local height=${4:-0}
+
+    _dialog_data
+
+    DIALOGRC=$dialog_critical_rc
+    $DIALOG --title "${title}" --clear --insecure --passwordbox "${message}" $height $width 2> $DIALOG_DATA
+}
+
+dialog_yes_no() {
+    local title="${1}"
+    local question="${2}"
+    local width=${3:-0}
+    local height=${4:-0}
+  
+    _dialog_data
+
+    DIALOGRC=$dialog_standard_rc
+    $DIALOG --clear \
+        --title "${title}" \
+        --yesno "${question}" $height $width 2> $DIALOG_DATA
+}
+
+dialog_menu() {
+    local title="${1}"
+    local message="${2}"
+    local menu_options="${3}"
+    local width=${4:-0}
+    local height=${5:-0}
+    local menu_height=${6:-0}
+  
+    _dialog_data
+
+    DIALOGRC=$dialog_standard_rc
+    $DIALOG --clear --title "${title}" --menu "${message}" $height $width $menu_height $menu_options 2> $DIALOG_DATA
+}
+
+dialog_input() {
+    local title=$1
+    local message=$2
+    local width=${3:-0}
+    local height=${4:-0}
+  
+    _dialog_data
+
+    DIALOGRC=$dialog_standard_rc
+    $DIALOG --clear \
+        --title "${title}" \
+        --inputbox "${message}" $height $width 2> $DIALOG_DATA
+}
+
+dialog_checklist() {
+    local message="${1}"
+    local choices="${2}"
+    local width=${3:-0}
+    local height=${4:-0}
+    local menu_height=${5:-0}
+  
+    _dialog_data
+  
+    $DIALOG --clear \
+        --title "${title}" \
+        --checklist "${message}" $height $width $menu_height $choices 2> $DIALOG_DATA
+}
+
+dialog_radiolist() {
+    local title="${1}"
+    local message="${2}"
+    local choices="${3}"
+    local width=${4:-0}
+    local height=${5:-0}
+    local menu_height=${6:-0}
+
+    _dialog_data
+
+    $DIALOG --clear \
+        --title "${title}" \
+        --radiolist "${message}" $height $width $menu_height $choices 2> $DIALOG_DATA
+}
+
+dialog_guage() {
+    ## this needs a loop piped to the gauge... looking around the internet for examples
+    ## does not work right now!
+    local title=$1
+    local message=$2
+    local width=${3:-0}
+    local height=${4:-0}
+
+    _dialog_data
+
+    DIALOGRC=$dialog_standard_rc
+    $DIALOG --clear \
+        --title "${title}" \
+        --guage "${message}" $height $width 0 2> $DIALOG_DATA
+}
+
+dialog_calendar() {
+    local title=$1
+    local message=$2
+    local width=${3:-0}
+    local height=${4:-0}
+
+    DIALOGRC=$dialog_standard_rc
+    user_date=$($DIALOG --clear \
+        --stdout \
+        --title "${title}" \
+        --calendar "${message}" $height $width)
+    echo "${user_date}" > $DIALOG_DATA
+}
+
+dialog_time() {
+    local title=$1
+    local message=$2
+    local width=${3:-0}
+    local height=${4:-0}
+    local curr_time="${5:-$DIALOG_CURRENT_TIME}"
+    
+    DIALOGRC=$dialog_standard_rc
+    user_time=$($DIALOG --clear \
+        --stdout \
+        --title "${title}" \
+        --timebox "${message}" $height $width $curr_time)
+    echo "${user_time}" > $DIALOG_DATA
+}
+
+dialog_data_clear() {
+    dialog.lib
+    cat /dev/null > $DIALOG_DATA
+}
+
+# private
+
+_dialog_data() {
+    dialog_data_clear
+    chmod 600 $DIALOG_DATA
+}

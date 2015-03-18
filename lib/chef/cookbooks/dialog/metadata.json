@@ -1,0 +1,32 @@
+{
+  "name": "dialog",
+  "version": "0.0.1",
+  "description": "dialog - display dialog boxes from shell scripts",
+  "long_description": "",
+  "maintainer": "hypertactics",
+  "maintainer_email": "curtis.downing@hypertactics.com",
+  "license": "Apache 2.0",
+  "platforms": {
+    "mac_os_x": ">= 0.0.0",
+    "mac_os_x_server": ">= 0.0.0"
+  },
+  "dependencies": {
+  },
+  "recommendations": {
+  },
+  "suggestions": {
+  },
+  "conflicting": {
+  },
+  "providing": {
+  },
+  "replacing": {
+  },
+  "attributes": {
+  },
+  "groupings": {
+  },
+  "recipes": {
+    "dialog": "Install dialog"
+  }
+}

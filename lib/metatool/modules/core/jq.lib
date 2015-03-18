@@ -1,0 +1,14 @@
+# not sure if this is needed
+# home for future jq functions
+jq.lib() {
+    export JQ=$(which jq)
+    
+    _jq_in_path?
+}
+ 
+_jq_in_path?() {
+    if [ -z "${JQ}" ]; then
+        echo "jq could not be found in your path. exiting!"
+        exit 2 
+    fi
+}

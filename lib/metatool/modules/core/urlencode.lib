@@ -1,0 +1,17 @@
+urlencode.lib() {
+    # lots of good ideas here
+    # http://stackoverflow.com/questions/296536/urlencode-from-a-bash-script
+    # https://gist.github.com/cdown/1163649
+    # picked this one - because it actually worked
+    # http://www.commandlinefu.com/commands/view/5732/url-encode
+    export URLENCODE=1
+    export URLDECODE=1
+}
+
+urlencode() {
+    echo "$@" | sed 's/ /%20/g;s/!/%21/g;s/"/%22/g;s/#/%23/g;s/\$/%24/g;s/\&/%26/g;s/'\''/%27/g;s/(/%28/g;s/)/%29/g;s/:/%3A/g'
+}
+ 
+urldecode() {
+    echo "$@" | sed 's/%20/ /g;s/%21/!/g;s/%22/"/g;s/%23/#/g;s/%24/\$/g;s/%26/\&/g;s/%27/'\''/g;s/%3A/:/g;s/(/%29/g;s/)/%28/g;'
+}

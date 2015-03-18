@@ -1,0 +1,55 @@
+{
+  "name": "bash_profile",
+  "description": "bash profile management - note this could break your profile if things go wrong",
+  "json_class": "Chef::Role",
+  "default_attributes": {
+    "metatool": {
+      "bash_profile": {
+        "aliases": [
+          {
+            "alias": "airport",
+            "command": "/System/Library/PrivateFrameworks/Apple80211.framework/Versions/Current/Resources/airport",
+            "platforms": ["mac_os_x"]
+          },
+          { 
+            "alias": "wifi",
+            "command": "/usr/sbin/system_profiler SPAirPortDataType",
+            "platforms": ["mac_os_x"]
+          },
+          {
+            "alias": "serial",
+            "command": "/usr/sbin/system_profiler SPHardwareDataType | grep 'Serial Number'",
+            "platforms": ["mac_os_x"]
+          }
+        ],
+        "variables": {
+          "PATH": [ 
+            "packer": {
+              "value": "$HOME/bin/packer_0.7.1_darwin_amd64",
+              "platforms": ["mac_os_x"]
+            },
+            "gnu_binaries": {
+              "value": "/usr/local/opt/coreutils/libexec/gnubin",
+              "platforms": ["mac_os_x"]
+            },
+            "osx_ovftool": { 
+              "value": "$PATH:/Applications/VMware\\ OVF\\ Tool"
+              "platforms": ["mac_os_x"]
+            } 
+          ] 
+        },
+        "adhocs": [
+          "[[ -s \"$HOME/.rvm/scripts/rvm\" ]] && source \"$HOME/.rvm/scripts/rvm\" # Load RVM into a shell session *as a function*"
+        ]
+      }
+    }
+  },
+  "override_attributes": {
+  },
+  "chef_type": "role",
+  "run_list": [
+    "recipe[metatool::bash_profile]"
+  ],
+  "env_run_lists": {
+  }
+}

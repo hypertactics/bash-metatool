@@ -1,0 +1,15 @@
+filesystem.lib() {
+    FILESYSTEM=""
+}
+
+filesystem_directory_empty() {
+    #http://www.cyberciti.biz/faq/linux-unix-shell-check-if-directory-empty/
+    local dir="${1}"
+
+    # look for empty dir 
+    if [ "$(ls -A $dir)" ]; then
+        echo 0
+    else
+        echo 1
+    fi
+}

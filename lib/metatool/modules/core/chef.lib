@@ -1,0 +1,35 @@
+chef.lib() {
+    metatool_config
+    export CHEF_SERVER="https://${chef_server}"
+    export CHEF_COMPANY_NAME="${knife_company_name}"
+    export CHEF_COOKBOOK_EMAIL="${knife_email}"
+}
+
+chef_run() {
+    metatool_run "chef-solo -c $CHEF_PATH/solo.rb -j $CHEF_PATH/node.json"
+}
+
+chef_create_config() {
+    if [ ! -d $HOME/.chef ]; then
+        mkdir $HOME/.chef
+    fi
+
+    if [ ! -f "${HOME}/.chef/knife.rb" ]; then
+        chef.lib
+cat << EOL > $HOME/.chef/knife.rb
+log_level                :info
+log_location             STDOUT
+node_name                "#{ENV['USER']}"
+client_key               "#{ENV['HOME']}/.chef/#{ENV['USER']}.pem"
+validation_client_name   "chef-validator"
+validation_key           "#{ENV['HOME']}/chef-validator"
+chef_server_url          "${CHEF_SERVER?"
+syntax_check_cache_path  "#{ENV['HOME']}/.chef/syntax_check_cache"
+cookbook_path            ["#{ENV['HOME']}/repos/chef/cookbooks","${METATOOL_CHEF_COOKBOOKS_PATH}"]
+cookbook_copyright       "${CHEF_COMPANY_NAME}"
+cookbook_email           "${CHEF_COOKBOOK_EMAIL}"
+
+EOL
+    fi
+}
+

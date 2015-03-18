@@ -1,0 +1,88 @@
+{
+  "category": { 
+    "title": "Category",
+    "message": "Select a category",
+    "type": "menu",
+    "options": ["Other other"]
+  },
+  "u_subcategory": { 
+    "title": "Sub Category",
+    "message": "Select a sub category",
+    "type": "menu",
+    "options": ["Inquiry 1","Other 2","Project 3","Voicemail 4"]
+  },
+  "type": {
+    "title": "Change Type",
+    "message": "Identify change type",
+    "type": "menu",
+    "options": ["Standard standard","Minor minor","Major major","Emergency emergency"]
+  },
+  "description": {
+    "title": "Description",
+    "message": "Summary of the Change",
+    "type": "input"
+  },
+  "short_description": {
+    "title": "Short Description",
+    "message": "A brief description about the change",
+    "type": "input"
+  },
+  "backout_plan": { 
+    "title": "Backout Plan",
+    "message": "When all fails what do we do?",
+    "type": "input"
+  },
+  "change_plan": {
+    "title": "Change Plan",
+    "message": "The change course of action",
+    "type": "input"
+  },
+  "test_plan": {
+    "title": "Test Plan",
+    "message": "What was done to test the change?",
+    "type": "input"
+  },
+  "u_impact_description": {
+    "title": "Impact Description",
+    "message": "What is the impact of this change?",
+    "type": "input"
+  },
+  "u_validation_plan": {
+    "title": "Validation Plan",
+    "message": "How do validate the change once deployed?",
+    "type": "input"
+  },
+  "sys_class_name": {
+    "type": "static",
+    "value": "change_request"
+  },
+  "risk": {
+    "title": "Risk Level",
+    "message": "Severity Level of Risk",
+    "type": "menu",
+    "options": ["1 Critical","2 High ","3 Medium","4 Low"]
+  },
+  "impact": {
+    "title": "Impact Level",
+    "message": "Business Impact",
+    "type": "menu",
+    "options": ["1 Critical","2 High ","3 Medium","4 Low"]
+  },
+  "priority": {
+    "title": "Priority Level",
+    "message": "Priority Level",
+    "type": "menu",
+    "options": ["1 Critical","2 High ","3 Medium","4 Low"]
+  },
+  "assignment_group": {
+    "title": "Assignment Group",
+    "message": "What group is this assigned to?",
+    "type": "menu",
+    "options": ["Networking networking", "Operations operations", "Telephony telephony"] 
+  },
+  "assigned_to": {
+    "title": "Person Assignment",
+    "message": "Who owns this change?",
+    "type": "input"
+  }
+}

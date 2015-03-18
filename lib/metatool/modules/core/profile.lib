@@ -1,0 +1,35 @@
+profile.lib() {
+    PROFILE_ALIASES="${HOME}/.metatool"
+    _profile_dotfile
+}
+
+profile_init() {
+    if ! grep PATH ${PROFILE_ALIASES}; then
+        echo "PATH=\$PATH:${METATOOL_BIN_DIRECTORY}" >> ${PROFILE_ALIASES}
+        echo "PATH=\$PATH:${METATOOL_TOOLS_BASE}" >> ${PROFILE_ALIASES}
+    fi
+}
+
+profile_link_to_shell() {
+    # add zsh support too
+    if [ -f "${HOME}/.bash_profile" ]; then
+        grep -v "\$HOME/.metatool" $HOME/.bash_profile > $HOME/.bash_profile.new
+        echo "source \$HOME/.metatool" >> $HOME/.bash_profile.new
+        mv $HOME/.bash_profile.new $HOME/.bash_profile
+        echo "Load metatool into your current shell"
+        echo
+        echo "source \$HOME/.bash_profile"
+    fi
+}
+
+_profile_set_var() {
+    local "var_name"
+    local "value"
+}
+
+_profile_dotfile() {
+    if [ ! -f "${PROFILE_ALIASES}" ]; then
+        touch "${PROFILE_ALIASES}"    
+    fi
+}
+

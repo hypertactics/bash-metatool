@@ -1,0 +1,218 @@
+workflows.lib() {
+    _workflows_options_defaults
+
+    export WORKFLOWS_DIALOG_VALUE_FILE="${METATOOL_TMP_DIRECTORY}/workflows_menu_value.json"
+    export WORKFLOWS_DIALOG_MENU_JSON_FILE="${METATOOL_TMP_DIRECTORY}/workflow_menu_item.json"
+}
+
+workflow_from_yaml() {
+    # build dialog menus from yaml (just converts to json and build menus)
+    # since there seem to be no yaml tools this converts yaml to json for jq use
+    # and passes to workflow_from_json
+
+    export wf_name="${1}"
+    local yaml_workflow="${2}"
+
+    local full_yaml_path="${METATOOL_USER_WORKFLOW_BASE}/${METATOOL}/${wf_name}/${yaml_workflow}"
+
+    $METATOOL_TOOLS_BASE/yaml_to_json $full_yaml_path > $WORKFLOWS_DIALOG_MENU_JSON_FILE
+
+    # the whole workflow needs a little refactoring it's basically broken and working by hacks
+    workflow_from_json "${wf_name}" "${WORKFLOWS_DIALOG_MENU_JSON_FILE}" "${WORKFLOWS_DIALOG_MENU_JSON_FILE}"
+}
+
+workflow_from_json() {
+    # build dialog menus with json
+    # wow this is such crap and it really needs a lot of fixing
+    export wf_name="${1}"
+    export json_file="${2}"
+    export workflow_json="${3:-${METATOOL_USER_WORKFLOW_BASE}/${METATOOL}/${wf_name}/${json_file}}"
+
+    cp $workflow_json $WORKFLOWS_DIALOG_VALUE_FILE
+ 
+    while read -r key_name; do
+        while read -r menu_type; do
+            _workflow_type_menus "${key_name}" "${menu_type}"
+        done <<< $(cat $workflow_json | jq  ".${key_name}.type" | sed 's|\"||g')
+    done <<< $(cat $workflow_json | jq 'keys[]' | sed 's|\"||g')
+}
+
+workflows_set_opt() {
+    # collect options for a workflow and generat some sort of help and error checking for display
+    local wf_var="${1}" # variable name
+    local wf_type="${2}" # input, selection, checklist, download, password
+    local wf_title="${3}"
+    local wf_message="${4}"
+    local wf_options="${5}"
+    local wf_width="${6:-0}"
+    local wf_height="${7:-0}"
+
+
+    # FIX: in progress
+    # vars from _workflows_json_update (need to have this function call that one
+    #_workflow_type_menus "${wf_var}" "${wf_type}"
+    #local wf_key="${1}"
+    #local wf_type="${2}"
+    #local wf_title=$(cat $workflow_json | jq  ".${wf_key}.title" | sed 's|\"||g')
+    #local wf_message=$(cat $workflow_json | jq  ".${wf_key}.message" | sed 's|\"||g')
+    #        _workflows_json_update "${wf_key}"
+
+    case "${wf_type}" in 
+        input)
+            dialog_input "${wf_title}" "${wf_message}" $wf_height $wf_width
+            _workflows_export_variable "${wf_var}"
+            _workflows_json_update
+        ;;
+        menu)
+            dialog_menu "${wf_title}" "${wf_message}" "${wf_options}" $wf_height $wf_width
+            _workflows_export_variable "${wf_var}"
+            _workflows_json_update
+        ;;
+        radio)
+            dialog_radiolist "${wf_title}" "${wf_message}" "${wf_options}" $wf_height $wf_width
+            _workflows_export_variable "${wf_var}"
+            _workflows_json_update
+        ;;
+        checklist)
+            dialog_checklist "${wf_title}" "${wf_message}" "${wf_options}" $wf_height $wf_width
+            _workflows_export_variable "${wf_var}"
+            _workflows_json_update
+        ;;
+        download)
+            echo "not available yet...finish the logic"
+            exit 2
+            _workflows_export_variable "${wf_var}"
+            _workflows_json_update
+        ;;
+        password)
+            dialog_passphrase "${wf_title}" "${wf_message}" $wf_height $wf_width
+            _workflows_export_variable "${wf_var}"
+            _workflows_json_update
+        ;;
+        yesno)
+            dialog_yes_no "${wf_title}" "${wf_message}" $wf_height $wf_width
+            _workflows_export_variable "${wf_var}"
+            _workflows_json_update
+        ;;
+        *)
+            echo "Unknown workflow option: ${wf_type} - correct your workflow definition!"
+            echo "exiting!"
+            exit 2
+        ;;
+    esac
+}
+
+workflows_help() {
+    echo -e "${WORKFLOW_HELP}"
+}
+
+# private
+
+_workflows_options_defaults() {
+    export WORKFLOW_OPTIONS=""
+    export WORKFLOW_HELP="${blueb}Options:${reset}\n"
+    export WORKFLOW_OPTION_REQUIRED_COUNT=0
+    export WORKFLOW_OPTION_COUNT=1
+}
+
+_workflows_export_variable() {
+    local var_name=$1
+
+    # error if value is empty .. something probably went wrong
+    # on the other hand, there may be time than an empty value is desired...
+    # we'll cross that bridge when we come to it
+    data="$(cat $DIALOG_DATA)"
+    if [ -n "${data}" ]; then
+        # workflow variable for export
+        export "wf_${var_name}=$(cat $DIALOG_DATA)"
+    else
+        echo "something went wrong with workflow for variable: ${var_name}"
+        exit 2
+    fi
+
+    # empty the data - it's now accessible via the wf variable
+    dialog_data_clear
+}
+ 
+_workflow_type_menus() {
+    # this seems similar to the workflows_set_opt above...not sure why I have this multiple times (probably did this by mistake early on)
+    # should clean up so there is one definition - it looks like one deals with json workflows but this should be combined or at least this can call
+    # the one above
+    local wf_key="${1}"
+    local wf_type="${2}"
+
+    local wf_title=$(cat $workflow_json | jq  ".${wf_key}.title" | sed 's|\"||g')
+    local wf_message=$(cat $workflow_json | jq  ".${wf_key}.message" | sed 's|\"||g')
+
+    case "${wf_type}" in
+        input)
+            dialog_input "${wf_title}" "${wf_message}"
+            _workflows_export_variable "${wf_key}"
+            _workflows_json_update "${wf_key}"
+        ;;
+        menu)
+            local wf_options=$(_workflows_wf_options)
+            dialog_menu "${wf_title}" "${wf_message}" "${wf_options}"
+            _workflows_export_variable "${wf_key}"
+            _workflows_json_update "${wf_key}"
+        ;;
+        radio)
+            cat $workflow_json | jq  ".${wf_key}.options[]" | sed 's|\"||g' | while read -r option; do
+                dialog_radiolist "${wf_title}" "${wf_message}" "${option} 0 0" 0 0
+            done
+            _workflows_export_variable "${wf_key}"
+            _workflows_json_update "${wf_key}"
+        ;;
+        date_time)
+            dialog_calendar "${wf_title}" "${wf_message}"
+            local wf_date=$(cat $DIALOG_DATA)
+
+            dialog_time "${wf_title}" "${wf_message}"
+            local wf_time=$(cat $DIALOG_DATA)
+
+            eval "data_time=${wf_date} ${wf_time}"
+            _workflows_json_update "${wf_key}"
+        ;;
+        static)
+            local wf_value=$(cat $workflow_json | jq  ".${wf_key}.value" | sed 's|\"||g')
+
+            echo "${wf_value}" > $DIALOG_DATA
+            _workflows_export_variable "${wf_key}"
+            _workflows_json_update "${wf_key}"
+        ;;
+        yesno)
+            dialog_yes_no "${wf_title}" "${wf_message}"
+            _workflows_export_variable "${wf_var}"
+            _workflows_json_update "${wf_key}"
+        ;;
+        checklist)
+            local wf_options=$(_workflows_wf_options)
+            dialog_checklist "${wf_message}" "${wf_options}"
+            _workflows_export_variable "${wf_key}"
+            _workflows_json_update
+        ;;
+        *)
+            echo "Unknown workflow type"
+            exit 2
+        ;;
+    esac
+}
+ 
+_workflows_wf_options() {
+    local options=""
+
+    while read -r option; do
+        options="${options} ${option}"
+    done <<< $(cat ${workflow_json} | jq  ".${wf_key}.options[]" | sed 's|\"||g')
+    
+    echo "${options}"
+}
+
+_workflows_json_update() {
+    local wf_var="${1}"
+    # create json file from json mapping
+    # jq - find key, delete and add it back with new structure value
+    local key_value="$(eval "echo \"\$wf_${wf_var}\"")"
+    local newval=$(cat $WORKFLOWS_DIALOG_VALUE_FILE | eval "jq -c 'del(.$wf_var) | . + { \"$wf_var\": \"${key_value}\"}'")
+    echo "${newval}" > $WORKFLOWS_DIALOG_VALUE_FILE
+}

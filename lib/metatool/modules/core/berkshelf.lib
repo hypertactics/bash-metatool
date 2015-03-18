@@ -1,0 +1,67 @@
+berkshelf.lib() {
+    metatool_config
+    export BERKSHELF_DIR=$HOME/.berkshelf
+    export BERKSHELF_CHEF_SERVER="https://${chef_server}"
+  
+    if [ ! -d "${HOME}/.berkshelf" ]; then
+        metatool_run "mkdir ${HOME}/.berkshelf"
+    fi
+}
+
+berkshelf_package() {
+    local source_dir="${1}"
+
+    colors_lib_notice "Berkshelf: Packaging cookbooks"
+    cd $source_dir && metatool_run "bundle" && metatool_run "berks" && metatool_run "berks package &> /dev/null"
+}
+
+berkshelf_package_and_deliver() {
+    local source_dir="${1}"
+    local dest_dir="${2}"
+
+    berkshelf_package $source_dir
+    metatool_run "mv cookbooks-*.tar.gz $METATOOL_TMP_DIRECTORY"
+
+    # important to cd with the current logic.. maybe to full path targeting instead
+    metatool_run "cd $METATOOL_TMP_DIRECTORY" && metatool_run "tar -zxf cookbooks-*.tar.gz"
+
+    if [ "${dest_dir}" == "${METATOOL_CHEF_COOKBOOKS_PATH}" ]; then
+        # only when syncing to metatool chef dir since rvm is dependency
+        metatool_run "rsync -qa --exclude 'rvm' cookbooks/ $dest_dir"
+    else
+        metatool_run "rsync -qa cookbooks/ $dest_dir"
+    fi
+
+    metatool_run "rm -f cookbooks-*.tar.gz"
+    metatool_run "rm -rf cookbooks"
+}
+
+berkshelf_update_metatool_cookbooks() {
+    colors_lib_notice "Berkshelf: Updating metatool cookbooks"
+    berkshelf_package_and_deliver "${METATOOL_CHEF_COOKBOOKS_PATH}/metatool" "${METATOOL_CHEF_COOKBOOKS_PATH}"
+}
+
+berkshelf_update() {
+    # update cookbooks
+    metatool_run "chef-solo -c $CHEF_PATH/solo.rb -j $CHEF_PATH/homebrew.json"
+}
+
+berkshelf_create_config() {
+    if [ ! -d "${HOME}/.berkshelf" ]; then
+        mkdir $HOME/.berkshelf
+    fi
+
+    if [ ! -f $HOME/.berkshelf/config.json ]; then
+        colors_lib_notice "Berkshelf: Creating config"
+        chef.lib
+cat << EOL > $HOME/.berkshelf/config.json
+{
+  "chef.chef_server_url": "${BERKSHELF_CHEF_SERVER}",
+  "chef.node_name": "${USER}",
+  "chef.client_key": "${HOME}/.chef/${USER}.pem",
+  "ssl.verify": false
+}
+
+EOL
+    fi 
+}

@@ -1,0 +1,8 @@
+sqlite3.lib() {
+    export SQLITE3_DB_DIR="${METATOOL_BASE}/db"
+    export SQLITE3_DB_FILE="${SQLITE3_DB_DIR}/metatool.sqlite3"
+}
+
+sqlite_init() {
+    sqlite3_create_db "metatool"
+}

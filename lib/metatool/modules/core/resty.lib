@@ -1,0 +1,15 @@
+resty.lib() {
+    source resty
+}
+
+resty_url() {
+    resty $1 &> /dev/null
+}
+
+resty_url_append() {
+    local old_url="${1}"    
+    local appendage="${2}"
+    local new_url="${old_url}/${appendage}"    
+    
+    resty "${new_url}"
+}

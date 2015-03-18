@@ -1,0 +1,64 @@
+git.lib() {
+    # one of the challenges with git is distributing client side hooks
+    # hopefully this helps with that distribution and also shared code strategy workflows
+    # it's hard to shared .gitconfig files and hard to enforce - so this is a middle ground
+    # don't step on personal stuff and provide a sharing ground for groups
+    
+    # default workspace unless overidden by user
+    export GIT_REPO="${1}"
+    ###export GIT_WORKSPACE="${1:-${HOME}/repos}"
+}
+
+git_clone() {
+    local workspace="${GIT_WORKSPACE:-$1}"
+
+    if [ -n "${1}" ]; then
+        workspace="${workspace}/"
+    fi
+
+    git clone $repo $workspace
+}
+
+git_tag() {
+    tag="${1:-$(date "+%Y%m%d.%H%M")}"
+    annotation="${2}"
+    
+    if [ -n "${annotation}" ]; then
+        # annotated tag
+        git tag -a "${tag}" -m "${annotation}"
+    else
+        # lightweight tag
+        git tag "${tag}"
+    fi
+}
+
+git_submodule() {
+    local action="${1}"
+    local submodule="${2}"
+
+    case "${action}" in
+        add)
+            git submodule init "${submodule}"
+        ;;
+        delete)
+            git submodule deinit "${submodule}"
+        ;;
+        update)
+            git submodule sync "${submodule}"
+        ;;
+        *)
+            echo "Not a valid git action. exiting!" 
+            exit 2
+        ;;
+    esac
+}
+
+git_push_tag() {
+     git push origin --tags
+}
+
+git_branch() {
+    branch="${1}"
+
+    git checkout -b "${branch}" && git push --set-upstream origin "${branch}"
+}

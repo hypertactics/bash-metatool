@@ -1,0 +1,9 @@
+<% @aliases.each do |k,v| -%>
+<% if k["platforms"].nil? or k["platforms"].include?(node["platform"]) -%>
+alias <%= k %>="<%= v %>"
+<% end -%>
+<% end -%>
+
+<% @adhocs.each do |adhoc| -%>
+<%= adhoc %>
+<% end -%>

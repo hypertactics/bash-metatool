@@ -1,0 +1,19 @@
+vcsh.lib() {
+    # vcsh is used to help manage user modules
+    export VCSH_REPO_SERVER="${1}"
+    export VCSH_REPO_NAMESPACE="${2}"
+    export VCSH_BASE="${METATOOL_USER_MODULE_BASE}"
+}
+
+vcsh_clone() {
+    local repo="${1}"
+
+    cd $VCSH_BASE
+    vcsh clone "${VCSH_REPO_SERVER}/${VCSH_REPO_NAMESPACE}/metatool-module-${repo}.git" "${repo}"
+}
+
+vcsh_update() {
+    local repo="${1}"
+
+    vcsh $repo pull
+}

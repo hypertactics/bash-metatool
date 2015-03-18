@@ -1,0 +1,291 @@
+metatool.lib() {
+    export METATOOL_BASE="${METATOOL_PATH}/.."
+    export METATOOL_GIT_DIRECTORY="${METATOOL_PATH}/.git"
+    export METATOOL_TMP_DIRECTORY="${METATOOL_PATH}/tmp"
+    export METATOOL_CACHE_DIRECTORY="${METATOOL_PATH}/cache"
+    export METATOOL_CONFIG_FILE="${METATOOL_PATH}/etc/config.yml"
+    export METATOOL_BIN_DIRECTORY="${METATOOL_PATH}/bin"
+    export METATOOL_GIT_WORKING_TREE="${METATOOL_PATH}"
+    export METATOOL_ENCRYPTED_PASSWORD_FILE="${METATOOL_CONFIG_DIRECTORY}/password.enc"
+    export METATOOL_DECRYPTED_PASSWORD_FILE="${METATOOL_TMP_DIRECTORY}/.decrypted_password"
+    export METATOOL_CORE_MODULE_BASE="${METATOOL_PATH}/lib/metatool/modules/core"
+    export METATOOL_USER_MODULE_BASE="${METATOOL_PATH}/lib/metatool/modules/extensions"
+    export METATOOL_USER_WORKFLOW_BASE="${METATOOL_PATH}/lib/metatool/workflows"
+    export METATOOL_CORE_WORKFLOW_BASE="${METATOOL_PATH}/lib/metatool/workflows/core"
+    export METATOOL_TOOLS_BASE="${METATOOL_PATH}/tools"
+    export METATOOL_CHEF_COOKBOOKS_PATH="${METATOOL_PATH}/lib/chef/cookbooks"
+
+    if [ -n "${metatool_verbose_color}" ]; then
+        export METATOOL_VERBOSE_COLOR="${metatool_verbose_color}"
+    else 
+        export METATOOL_VERBOSE_COLOR="yellow"
+    fi
+}
+
+# public
+
+metatool_include_libs() {
+    # include the following core lib in all things
+    colors.lib
+    yaml.lib
+    urlencode.lib
+    berkshelf.lib
+    gitlab.lib
+    chef.lib
+    dialog.lib
+    resty.lib
+    workflows.lib
+}
+
+metatool_run() {
+    # since I was silly to choose bash and we're using eval - trying to wrap all the eval up into this function
+    # http://mywiki.wooledge.org/BashFAQ/048
+    local cmd="${1}"
+
+    eval "$(printf 'local command=%q' "$cmd")"
+
+    if [[ "${METATOOL_VERBOSE}" == "1" ]]; then
+        _metatool_verbose "${command}"
+    fi
+    
+    eval "${command}"
+}
+
+metatool_update() {
+    git --git-dir "${METATOOL_GIT_DIRECTORY}" --work-tree "${METATOOL_GIT_WORKING_TREE}" pull
+    current_version=$(git describe --tags)
+    latest_version=$(git tag | sort -rn | head -1)
+
+    # ensure the latest tagged version is checked out
+    if [ "${current_version}" != "${latest_version}" ]; then
+        echo -e "${blueb}There is a newer version of metatool available:${reset} ${latest_version}"
+        git --git-dir "${METATOOL_GIT_DIRECTORY}" --work-tree "${METATOOL_GIT_WORKING_TREE}" checkout $latest_version
+    else
+        echo -e "${yellowf}Current Version of Metatool is:${reset} ${current_version} (latest)"
+    fi
+}
+
+metatool_show_tool_workflows() {
+    local tool="${1}"
+    local workflows=$(ls -1 $METATOOL_USER_WORKFLOW_BASE/${tool}/*.sh | awk -F/ '{print $NF}' | awk -F. '{print $1}')
+    echo -e "${yellowf}WORKFLOWS${reset}"
+    echo $workflows
+}
+
+metatool_install_dependencies() {
+    if [ -d "/usr/local/rvm" ]; then
+        echo "rvm installed via system: so not sure what to do yet...this was intended to be run on a personal system/workstation"
+        exit 2
+    fi
+
+    if [ ! -d "${HOME}/.rvm" ]; then
+        curl -sSL https://get.rvm.io | bash -s stable --ruby
+        [[ -s "$HOME/.rvm/scripts/rvm" ]] && source "$HOME/.rvm/scripts/rvm"
+    fi
+
+    if [ ! -d "/usr/local/Cellar" ]; then
+        ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)"
+    fi
+ 
+    gem install chef --no-rdoc --no-ri
+}
+
+metatool_user_not_root() {
+    # user should be using company credentials, if using root it is considered gross misuse so we stop that here
+    if [ $UID -eq 0 ]; then
+        echo -e "${redf}You are doing it wrong!${reset}" echo -e "${yellowf}User an ${redf}unprivileged ${yellowf}username${reset}" exit 2
+    fi
+}
+
+metatool_schedule_job() {
+    # this is a quick hack job
+    # only supporting minutes for now
+    # but I don't anticipate much use of this except for the password locking
+    # probably smarter to hand this off to chef or ansible
+    local jobname="${1}.cron" 
+    local minutes="${2}"
+
+    cron_appendage=$(cat "${METATOOL_CONFIG_DIRECTORY}/cron/${jobname}" | sed "s%{{METATOOL_PATH}}%$METATOOL_BIN_DIRECTORY%")
+    cron_appendage=$(echo "${cron_appendage}" | sed "s/{{minutes}}/$minutes/")
+    curr_crontab=$(crontab -l)
+    echo "${curr_crontab}${cron_appendage}" | crontab -
+}
+
+metatool_remove_job() {
+    local job_filter="${1}"
+
+    if [ "$job_filter}" ]; then
+        # remove select metatool entries
+        crontab -l | grep -v "metatool:job:${filter}" | crontab -
+    else
+        # remove all metatool entries
+        crontab -l | grep -v "metatool" | crontab -
+    fi
+}
+
+metatool_password_lock() {
+    if [ -f "${METATOOL_DECRYPTED_PASSWORD_FILE}" ]; then
+        rm -f "${METATOOL_DECRYPTED_PASSWORD_FILE}"
+        echo "Metatool Credentials have been locked."
+    else
+        echo "Nothing to do."
+    fi
+}
+
+metatool_store_password() {
+    if [ ! -f "${METATOOL_DECRYPTED_PASSWORD_FILE}" ]; then
+        dialog_passphrase "Store Centralized Password" "LDAP/AD Credentials"
+        cat $DIALOG_DATA > "${METATOOL_DECRYPTED_PASSWORD_FILE}"
+        chmod 600 "${METATOOL_DECRYPTED_PASSWORD_FILE}"
+
+        # TODO
+        ## locking does not appear to be working right now so will revisit this
+        metatool_schedule_job "lock" "15"
+    fi
+}
+
+metatool_show_installed_workflows() {
+    local workflows=$(ls -1 $METATOOL_CORE_WORKFLOW_BASE/*.sh | awk -F/ '{print $NF}' | awk -F. '{print $1}')
+    echo -e "${yellowf}WORKFLOWS${reset}"
+    echo $workflows
+}
+
+
+metatool_manage_config() {
+    dialog_menu "Gitlab Token" "Do you have a Gitlab Account?" "Yes y No n"
+    if [ "$(cat ${DIALOG_DATA})" == "Yes" ]; then
+        dialog_input "Gitlab Server" "Enter your Gitlab Server (e.g. gitlab.com)"
+         _metatool_update_config "gitlab_server" "$(cat ${DIALOG_DATA})" 
+        dialog_input "Gitlab Token" "Enter Your Token"
+         _metatool_update_config "gitlab_token" "$(cat ${DIALOG_DATA})" 
+    fi
+ 
+    dialog_menu "Github Token" "Do you have a Github Account?" "Yes y No n"
+    if [ "$(cat ${DIALOG_DATA})" == "Yes" ]; then
+        dialog_input "Github Server" "Enter your Github Server (e.g. github.com)"
+        _metatool_update_config "github_server" "$(cat ${DIALOG_DATA})" 
+        dialog_input "Gitlab Token" "Enter Your Token"
+        _metatool_update_config "github_token" "$(cat ${DIALOG_DATA})" 
+    fi
+
+    dialog_menu "Chef" "Do you have a Chef Server?" "Yes y No n"
+    if [ "$(cat ${DIALOG_DATA})" == "Yes" ]; then
+        dialog_input "Chef Server" "Enter your Server Server (e.g. chef.mydomain.com)"
+        _metatool_update_config "chef_server" "$(cat ${DIALOG_DATA})"
+        dialog_msg "Chef Certificate" "Make sure you enter your Chef certificate in $HOME/.chef/$USER.pem"
+    fi
+}
+
+metatool_create_config() {
+    if [ ! -f "${METATOOL_CONFIG_FILE}" ]; then
+        metatool_manage_config
+    fi
+}
+
+metatool_list_modules() {
+    gitlab_get_projects "metatool"
+}
+
+
+metatool_get_module() {
+    local module="${1}"
+
+    vcsh_clone "metatool-module-${module}"
+}
+
+metatool_update_module() {
+    local module="${1}"
+
+    vcsh_update "metatool-module-${module}"
+}
+
+metatool_install_workflows() {
+    local git_repo="${GITLAB_SERVER}"
+    local available_workflows=$(metatool_list_modules | sed 's/\"//g')
+    local selected_workflows=""
+
+    dialog_data_clear
+
+    while read -r line; do
+        mod_workflow="$(_metatool_project_names_from_repo_name $line)"
+        if [[ "${line}" =~ "metatool-workflows" ]]; then
+            if [ -d "${METATOOL_USER_WORKFLOW_BASE}/${mod_workflow}" ]; then
+                rm -rf "${METATOOL_USER_WORKFLOW_BASE}/${mod_workflow}"
+            fi
+
+            mkdir "${METATOOL_USER_WORKFLOW_BASE}/${mod_workflow}"
+            cd "${METATOOL_USER_WORKFLOW_BASE}/${mod_workflow}"
+
+            git archive --format=tar --remote=git@${git_repo}:metatool/${line}.git HEAD | tar -x &
+            dialog_info "Adding/Updating Workflow ${mod_workflow}" 40 3; sleep 2
+
+            ln -sf $METATOOL_PATH/bin/metatool ${METATOOL_TOOLS_BASE}/${mod_workflow}
+        fi
+    done <<< "${available_workflows}"
+}
+
+metatool_install_modules() {
+    local git_repo="${GITLAB_SERVER}"
+    # the git commands should be pulled back to the git module later
+    # note the sed gets used in a lot of places - should becomed a function
+    # this should only manage "official" modules and leave a users alone
+    local available_modules=$(metatool_list_modules | sed 's/\"//g')
+    local selected_modules=""
+
+    dialog_data_clear
+
+    while read -r line; do
+        mod_name="$(_metatool_project_names_from_repo_name $line)"
+        if [[ "${line}" =~ "metatool-module" ]]; then
+            if [ -f "${METATOOL_USER_MODULE_BASE}/${mod_name}.lib" ]; then
+                rm -f "${METATOOL_USER_MODULE_BASE}/${mod_name}.lib"
+                selected_modules="${selected_modules} ${line} ${mod_name} on"
+            else
+                selected_modules="${selected_modules} ${line} ${mod_name} off"
+            fi
+        fi
+    done <<< "${available_modules}"
+  
+    dialog_checklist "Modules" "Which modules do you wwant installed" "${selected_modules}"
+
+    cd $METATOOL_USER_MODULE_BASE
+ 
+    for selected_mod in $(cat "${DIALOG_DATA}"); do
+        module_name="$(_metatool_project_names_from_repo_name $selected_mod)"
+        git archive --format=tar --remote=git@${git_repo}:metatool/${selected_mod}.git HEAD ${module_name}.lib | tar -x &
+        dialog_info "Adding/Updating Module ${module_name}" 40 3
+        wait
+    done
+}
+
+metatool_config() {
+    if [ -f "${METATOOL_CONFIG_FILE}" ]; then
+        eval $(yaml_parse "${METATOOL_CONFIG_FILE}")
+    fi
+}
+
+# private-ish
+
+_metatool_verbose() {
+    local output="${1}"
+    printf "${cyanb}${blackf}%s${reset} %s\n" "[command]" "${output}"
+}
+
+_metatool_project_names_from_repo_name() {
+    local repo_name="${1}"
+    mod_name="$(echo ${repo_name} | awk -F- '{print $NF}')"
+    echo "${mod_name}"
+}
+
+_metatool_update_config() {
+    local key="${1}"
+    local value="${2}"
+
+    if [ ! -f "${METATOOL_CONFIG_FILE}" ]; then
+        echo "---" > "${METATOOL_CONFIG_FILE}"
+    fi
+
+    grep -v "${key}" "${METATOOL_CONFIG_FILE}" > "${METATOOL_CONFIG_FILE}.new"
+    echo "${key}: ${value}" >> "${METATOOL_CONFIG_FILE}.new"
+    mv "${METATOOL_CONFIG_FILE}.new" "${METATOOL_CONFIG_FILE}"
+}

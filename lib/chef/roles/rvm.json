@@ -1,0 +1,27 @@
+{
+  "name": "rvm",
+  "description": "A set of rubygems for metatool",
+  "json_class": "Chef::Role",
+  "default_attributes": {
+    "metatool": {
+      "rvm": {
+        "default_ruby": "ruby-2.1.2",
+        "global_gems": [
+          { "name": "berkshelf" },
+          { "name": "rest-client" },
+          { "name": "git" },
+          { "name": "ssh-config" }
+        ]
+      }
+    }
+  },
+  "override_attributes": {
+  },
+  "chef_type": "role",
+  "run_list": [
+    "recipe[metatool::rvm]",
+    "recipe[rvm::user]"
+  ],
+  "env_run_lists": {
+  }
+}

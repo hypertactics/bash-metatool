@@ -1,0 +1,4 @@
+github.lib() {
+    # coming soon
+    export GITHUB_URL="${1}"
+}

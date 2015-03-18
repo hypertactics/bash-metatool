@@ -1,0 +1,59 @@
+# openssh is fairly ubiquitous 
+
+openssh.lib() {
+    export SSH_KEYFILE=$HOME/.ssh/id_rsa
+    export SSH_PEMFILE=$HOME/.ssh/id_rsa.pem
+}
+
+# public
+
+openssh_private_pem() {
+    # make sure we have a private pem file
+    if [ -f $HOME/.ssh/id_rsa ]; then
+        if [ ! -f $HOME/.ssh/id_rsa.pem ]; then
+            dialog_msg "You will be prompted to enter your password again in order to set up a PEM file from your RSA key for encrypting files"
+            dialog_passphrase "SSH Key passphrase" "Enter a good passphrase for your SSH PEM."
+            passphrase=$(cat $DIALOG_DATA)
+            openssl rsa -in $SSH_KEYFILE -out $SSH_PEMFILE -outform PEM -pubout -passin "file:${DIALOG_DATA}"
+            dialog_data_clear
+            passphrase=''
+        fi
+    fi
+}
+
+openssh_private_public_keys() {
+    # make sure we have at least the default id_rsa key/pair set up
+    if [ ! -f $HOME/.ssh/id_rsa ]; then
+
+        dialog_yes_no "$HOME/.ssh/id_rsa is missing, Would you like to create one now?"
+        response=$?
+
+        case $response in
+            0) 
+                dialog_passphrase "SSH Key passphrase" "Enter a good passphrase for your SSH key."
+                passphrase=$(cat $DIALOG_DATA)
+                ssh-keygen -t rsa -f $SSH_KEYFILE -b 2048 -N "${passphrase}"
+                passphrase=''
+                ;;
+            *)
+                dialog_msg "Thing may not work right without encryption"
+                ;;
+        esac
+    fi
+}
+
+openssh_encrypt_file() {
+    local unencrypted_file=$1
+    local encrypted_file="${unencrypted_file}.enc"
+
+    openssl rsautl -encrypt -pubin -inkey "${SSH_PEMFILE}" -in "${unencrypted_file}" -out "${encrypted_file}"
+}
+
+openssh_decrypt_file() {
+    local encrypted_file=$1
+    local unencrypted_file=$(echo "${encrypted_file}" | awk -F. '{print $1}')
+
+    openssl rsautl -decrypt -inkey "${SSH_PEMFILE}" -in "${encrypted_file}" -out "${unencrypted_file}"
+}
+
+# private

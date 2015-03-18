@@ -1,0 +1,23 @@
+DEPENDENCIES
+  metatool
+    path: .
+    metadata: true
+
+GRAPH
+  build-essential (2.0.6)
+  chef_gem (0.1.0)
+  homebrew (1.9.2)
+  java (1.28.0)
+  metatool (0.1.0)
+    homebrew (= 1.9.2)
+    python (~> 1.4.6)
+    rvm (~> 0.9.2)
+  python (1.4.6)
+    build-essential (>= 0.0.0)
+    yum-epel (>= 0.0.0)
+  rvm (0.9.2)
+    chef_gem (>= 0.0.0)
+    java (>= 0.0.0)
+  yum (3.3.2)
+  yum-epel (0.5.1)
+    yum (~> 3.0)

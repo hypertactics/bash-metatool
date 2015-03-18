@@ -1,0 +1,103 @@
+gitlab.lib() {
+    metatool_config
+    export GITLAB_SERVER="${1:-${gitlab_server}}"
+    export GITLAB_URL="https://${GITLAB_SERVER}/api/v3"
+    export GITLAB_TOKEN="${gitlab_token}"
+    export GITLAB_PAGINATION=100
+    export GITLAB_PAGE_ATTEMPTS=10
+  
+    resty_url "${GITLAB_URL}"
+}
+
+gitlab_get_projects() {
+    local group="${1}"
+    local my_projects=$(_gitlab_get_all_projects)
+
+    if [ -n "${group}" ]; then
+        # get project by group name 
+        # another eval.. seems like there should be a better way
+        group_filter="jq '.[]' | jq 'select(.namespace.name == \"${group}\")'"
+        echo $my_projects |  eval $group_filter | jq '.name'
+    else
+        echo $my_projects | jq '.[].name'
+    fi 
+}
+
+gitlab_my_info() {
+    metatool_run "GET /user -d 'private_token=${GITLAB_TOKEN}' | jq ."
+}
+
+gitlab_project_create() {
+    local name="${1}"
+    local description="${2}"
+
+    # namespaces/group support needs to be added someday
+    metatool_run "POST /projects -d 'private_token=${GITLAB_TOKEN}' -d 'name=${name}' -d 'description=${description}'"
+}
+
+gitlab_group_create() {
+    local group_name="${1}"
+    local group_path="${2}"
+
+    metatool_run "POST /groups -d 'private_token=${GITLAB_TOKEN}' -d 'name=${group_name}' -d 'path=${group_path}'"
+}
+
+gitlab_get_groups() {
+    metatool_run "GET /groups -d 'private_token=${GITLAB_TOKEN}' -d 'per_page=${GITLAB_PAGINATION}' | jq '.[].name'"
+}
+
+gitlab_get_project_id() {
+    local project_group="${1}"
+    local project_name="${2}"
+    local all_projects=$(_gitlab_get_all_projects)
+
+    metatool_run "GET /projects/${project_group}%2F${project_name} -d 'private_token=${GITLAB_TOKEN}' -Q | jq '.id'"
+}
+
+gitlab_merge_request() {
+    local project_group="${1}"
+    local project_name="${2}"
+    local source_branch="${3}"
+    local target_branch="${4}"
+    local merge_title="${5}"
+    local project_id=$(gitlab_get_project_id "${project_group}" "${project_name}")
+
+    metatool_run "POST /projects/${project_id}/merge_requests -d 'private_token=${GITLAB_TOKEN}' -d 'id=${project_id}' -d 'source_branch=${source_branch}' -d 'target_branch=${target_branch}' -d 'title=${merge_title}'"
+}
+
+gitlab_new_issue() {
+    local project_group="${1}"
+    local project_name="${2}"
+    local title="${3}"
+    local description="${4}"
+
+    colors_lib_notice "Gitlab: Creating issue" 
+
+    project_id=$(gitlab_get_project_id "${project_group}" "${project_name}")
+
+    metatool_run "POST /projects/${project_id}/issues -d 'private_token=${GITLAB_TOKEN}' -d 'title=${title}' -d 'description=${description}'"
+}
+
+_gitlab_get_all_projects() {
+    # goes through all pages since gitlab max projects per page is 100
+    # this is crappy and should be refactored a bit
+
+    page_number=1
+    local projects=$(GET /projects -d "private_token=${GITLAB_TOKEN}" -d "per_page=${GITLAB_PAGINATION}" -d "page=${page_number}")
+    local next_page="blah"
+
+    while [ "${next_page}" != "[]" ]; do
+        # this is crappy and should be fixed...
+        page_number=$(($page_number+1))
+        next_page=$(GET /projects -d "private_token=${GITLAB_TOKEN}" -d "per_page=${GITLAB_PAGINATION}" -d "page=${page_number}")
+        projects=$(echo $projects $next_page)
+
+        if [ $page_number -eq $GITLAB_PAGE_ATTEMPTS ]; then
+            # super half as attempt at a timeout that's not really a timeout - but this is bash ctrl+c idjit
+            echo "Assuminmg something when wrong - exiting!"
+            exit 2
+        fi
+    done
+
+    echo $projects
+}

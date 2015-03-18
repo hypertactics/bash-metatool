@@ -1,0 +1,34 @@
+# depends on ssh-config
+# https://rubygems.org/gems/ssh-config
+
+ssh-config.lib() {
+   $SSH_CONFIG_TOOL=$(which ssh-config) 
+   $SSH_CONFIG_FILE=$HOME/.ssh/config
+ 
+   if [ ! -f $SSH_CONFIG_FILE ]; then
+       touch $SSH_CONFIG_FILE
+   fi
+}
+
+_ssh_config_list() {
+    $SSH_CONFIG_TOOL list
+}
+
+_ssh_config_rm() {
+    local host=$1
+
+    $SSH_CONFIG_TOOL rm $host
+}
+
+_ssh_config_set() {
+    local args=$@ 
+
+    $SSH_CONFIG_TOOL set $args
+}
+
+_ssh_config_unset() {
+    local host=$1
+    local key=$1
+
+    $SSH_CONFIG_TOOL $host $key
+}
