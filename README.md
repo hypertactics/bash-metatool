@@ -3,15 +3,14 @@ metatool
 
 What is it for
 ----
-It is intended to be a client workflow wrapper and toolbox
+It is intended to be a client workflow wrapper and toolbox (but at the end of the day it's really just a command builder)
 - helping to maintain good profile standards via chef-solo
 - it's not trying to reivent the wheel but facilitate many good wheels while adding the ability to maintain local workflows which can in turn trigger remote workflows.
-- mini framework event to help simplify bash scripting with yaml/json configs. (in the end it's really just a command builder/wrapper)
 
 Caveats
 ----
 - Please not this is in it's early stages and started as many ideas do to a set of problems I observe in my workplace or at home.  There are probably better solutions out there but creating somethings keeps me from going insanely mad.  I only hope it helps.
-- - personally I found it an interesting challenge to try and make a framework(ishy) for bash
+- personally I found it an interesting challenge to try and make a framework(ishy) for bash
 
 File Structure
 ---
@@ -41,15 +40,33 @@ Installation
 Assumes you are using locally installed version of rvm (https://rvm.io/)
 
 1. Download and install chef-dk for your platform
+
     https://downloads.chef.io/chef-dk/
+
 2. mount your chef-dk installation with RVM (example below is for OS X)
-    rvm mount /opt/chefdk/embedded/bin/ruby
+
+    `rvm mount /opt/chefdk/embedded/bin/ruby`
+
 3. Clone this repository some place and make sure the bin directory is in your local PATH variable (assuming you fork your own)
-    git clone https://github.com/hypertactics/metatool.git
+
+    `git clone https://github.com/hypertactics/metatool.git`
 4. Initialize metatool
-    metatool init
-5. source ~/.metatool
+
+    `metatool init`
+
+5. `source ~/.metatool`
+
+Verbosity
+----
+Show commands as they are run
+
+`export METATOOL_VERBOSE=1`
+
+Debug mode for bash
+
+`export METATOOL_DEBUG=1`
 
 TODO
 ----
-- There is a liberal use of bash eval here... normally eval in is really a no no and should never be used.  Replace as many as possible.  Since this is really a personal workflow system I'm less concerned about it but it lingers in the back of my mind.  
+- There is a liberal use of bash eval here... normally eval in is really a no no and should never be used.  Replace as many as possible.  Since this is really a personal workflow system I'm less concerned about it but it lingers in the back of my mind.
+mindmorass:metatool cdowning$
