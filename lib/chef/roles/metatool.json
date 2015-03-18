@@ -8,9 +8,6 @@
         "dialog": {
           "action": "install"
         },
-        "vcsh": {
-          "action": "install"
-        },
         "awscli": {
           "action": "install"
         },
@@ -26,16 +23,10 @@
         "html-xml-utils": {
           "action": "install"
         },
-        "pyenv-virtualenv": {
-          "action": "install"
-        },
         "bash": {
           "action": "install"
         },
         "phantomjs": {
-          "action": "install"
-        },
-        "ansible": {
           "action": "install"
         }
       }

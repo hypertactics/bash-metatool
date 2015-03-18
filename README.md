@@ -6,7 +6,7 @@ What is it for
 It is intended to be a client workflow wrapper and toolbox
 - helping to maintain good profile standards via chef-solo
 - it's not trying to reivent the wheel but facilitate many good wheels while adding the ability to maintain local workflows which can in turn trigger remote workflows.
-- mini framework event to help simplify bash scripting with yaml/json configs.
+- mini framework event to help simplify bash scripting with yaml/json configs. (in the end it's really just a command builder/wrapper)
 
 Caveats
 ----
